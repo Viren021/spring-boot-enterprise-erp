@@ -1,0 +1,94 @@
+# ==========================================
+# 🛑 SECRETS & CREDENTIALS (CRITICAL)
+# ==========================================
+.env
+.env.*
+application-secrets.yml
+application-secrets.properties
+*.pem
+*.key
+
+# ==========================================
+# ☕ JAVA & SPRING BOOT
+# ==========================================
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Compiled class files
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ==========================================
+# 🌐 FRONTEND (ANGULAR / NODE.JS)
+# ==========================================
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Angular build output
+dist/
+tmp/
+out-tsc/
+bazel-out/
+
+# ==========================================
+# 🐳 DOCKER
+# ==========================================
+# Ignore local volume data if you ever bind-mount instead of using named volumes
+docker-data/
+pg-data/
+mongo-data/
+
+# ==========================================
+# 💻 IDE & EDITOR FILES
+# ==========================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ==========================================
+# 🍏 OS GENERATED FILES
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,0 +1,38 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: erp-service-compliance
+
+  # Connect to our new NoSQL Database (Secured with .env placeholders!)
+  data:
+    mongodb:
+      # Defaults to localhost/admin/secret for IDE, easily overridden by Docker
+      uri: mongodb://${MONGO_ROOT_USER:admin}:${MONGO_ROOT_PASSWORD:secret}@${MONGO_HOST:localhost}:27017/erp_audit_db?authSource=admin
+
+  # Security connection to Keycloak
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/erp-realm
+
+  # 🚀 Kafka Configuration for the Audit Vacuum
+  kafka:
+    bootstrap-servers: ${KAFKA_URL:localhost:9092}
+    consumer:
+      group-id: compliance-audit-group
+      # 'earliest' means it will suck up all the historical messages you fired earlier today!
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # 🚨 CRITICAL: Must be StringDeserializer so it can read raw JSON from ANY topic
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+# Web3 / Blockchain Configuration
+blockchain:
+  arbitrum:
+    # The public endpoint for the Arbitrum Sepolia Testnet
+    node-url: ${ARBITRUM_NODE_URL:https://sepolia-rollup.arbitrum.io/rpc}
+    # 🌟 CRITICAL: Never hardcode your MetaMask Private Key! Reads from .env
+    private-key: ${WEB3_PRIVATE_KEY}

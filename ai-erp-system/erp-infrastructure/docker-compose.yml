@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 🏗️ CORE INFRASTRUCTURE
+  # ==========================================
+
+  # 1. Database (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: erp-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}          # 🌟 Reads from .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # 🌟 Reads from .env
+      POSTGRES_DB: erp_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - erp-network
+
+  # 2. Identity Provider (Keycloak)
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.0
+    container_name: erp-keycloak
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}         # 🌟 Reads from .env
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD} # 🌟 Reads from .env
+    command: start-dev
+    ports:
+      - "8180:8080"
+    depends_on:
+      - postgres
+    networks:
+      - erp-network
+
+  # 3. Event Bus (Kafka + Zookeeper)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: erp-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - erp-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: erp-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - erp-network
+
+  # Kafka UI
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: erp-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - erp-network
+
+  # 4. Cache (Redis)
+  redis:
+    image: redis:alpine
+    container_name: erp-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - erp-network
+
+  # 5. Document Database (MongoDB)
+  erp-mongodb:
+    image: mongo:latest
+    container_name: erp-mongodb
+    command: [--auth]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}      # 🌟 ADDED: Required for --auth
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}  # 🌟 ADDED: Reads from .env
+    ports:
+      - "27017:27017"
+    volumes:
+      - erp_mongo_data:/data/db
+    networks:
+      - erp-network
+    restart: unless-stopped
+
+
+  # ==========================================
+  # 🚀 YOUR MICROSERVICES
+  # ==========================================
+
+  # Example: Inventory Service
+  # inventory-service:
+  #   build: ../erp-service-inventory  # 🌟 Looks UP one folder, then INTO the service folder
+  #   container_name: erp-inventory-service
+  #   ports:
+  #     - "8083:8083"
+  #   environment:
+  #     - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD} # Passes the .env password to Spring
+  #   depends_on:
+  #     - postgres
+  #     - kafka
+  #   networks:
+  #     - erp-network
+
+  # Example: Compliance Service
+  # compliance-service:
+  #   build: ../erp-service-compliance
+  #   container_name: erp-compliance-service
+  #   ports:
+  #     - "8084:8084"
+  #   environment:
+  #     - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@erp-mongodb:27017/erp_audit_db?authSource=admin
+  #   depends_on:
+  #     - erp-mongodb
+  #     - kafka
+  #   networks:
+  #     - erp-network
+
+networks:
+  erp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  erp_mongo_data:

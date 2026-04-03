@@ -1,0 +1,39 @@
+server:
+  port: 8082 # HR Service lives here!
+
+spring:
+  application:
+    name: erp-service-hr
+
+  # Connect to the exact same database (Secured with .env placeholders!)
+  datasource:
+    # Defaults to localhost for your IDE, easily overridden by Docker
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/erp_db}
+    username: ${DB_USERNAME:erp_superadmin}
+    password: ${DB_PASSWORD} # 🌟 Reads from Environment Variables
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    # IMPORTANT: We set this to "none" because the Tenant Service manages table creation!
+    # The HR service should only READ/WRITE data, not change table structures.
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Protect this service with Keycloak
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/erp-realm
+
+  # Kafka connection for the Event Bus
+  kafka:
+    bootstrap-servers: ${KAFKA_URL:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer

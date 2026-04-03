@@ -1,0 +1,48 @@
+server:
+  port: 8084 # Finance Service lives here!
+
+spring:
+  application:
+    name: erp-service-finance
+
+  # 1. Database Connection (Secured with .env placeholders!)
+  datasource:
+    # Defaults to localhost for your IDE, but easily overridden by Docker!
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/erp_db}
+    username: ${DB_USERNAME:erp_superadmin}
+    password: ${DB_PASSWORD} # 🌟 Reads from Environment Variables
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # 2. Keycloak Security
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/erp-realm
+
+  # 3. Kafka Connection (The Event Bus)
+  kafka:
+    bootstrap-servers: ${KAFKA_URL:localhost:9092}
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+    consumer:
+      group-id: finance-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false # <-- 1. Ignore the Inventory package name
+        spring.json.value.default.type: com.example.erp_service_finance.dto.OrderEvent # <-- 2. Force it to use the Finance class

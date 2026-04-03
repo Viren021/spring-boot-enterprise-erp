@@ -1,0 +1,39 @@
+server:
+  port: 8081 # Running on 8081 so it doesn't clash with Keycloak or Gateway
+
+spring:
+  application:
+    name: erp-tenant-service
+
+  # Database Configuration (Secured with .env placeholders!)
+  datasource:
+    # Defaults to localhost for your IDE, easily overridden by Docker
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/erp_db}
+    username: ${DB_USERNAME:erp_superadmin}
+    password: ${DB_PASSWORD} # 🌟 Reads from Environment Variables
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update # Automatically creates our initial tables
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Security Configuration (Connecting to Keycloak)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Tells Spring Security where to verify the JWT tokens
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/erp-realm
+
+# Custom properties for our Auth API
+keycloak:
+  domain: ${KEYCLOAK_URL:http://localhost:8180}
+  realm: erp-realm
+  client-id: erp-backend
+  # 🌟 CRITICAL: Never hardcode your Keycloak Client Secret! Reads from .env
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
