@@ -1,0 +1,79 @@
+<div class="d-flex min-vh-100 bg-light">
+
+  <aside class="bg-white border-end d-flex flex-column shadow-sm" style="width: 260px; position: sticky; top: 0; height: 100vh;">
+
+    <div class="p-4 border-bottom">
+      <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
+        <span class="material-icons text-primary me-2">layers</span>
+        Enterprise ERP
+      </h5>
+    </div>
+
+    <nav class="p-3 flex-grow-1">
+      <ul class="nav flex-column gap-2">
+
+        <li class="nav-item">
+          <a routerLink="/dashboard"
+             routerLinkActive="bg-primary bg-opacity-10 text-primary fw-bold"
+             [routerLinkActiveOptions]="{exact: true}"
+             class="nav-link text-secondary d-flex align-items-center rounded-3 px-3 py-2">
+            <span class="material-icons me-3 fs-5">dashboard</span> Command Center
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a routerLink="/hr"
+             routerLinkActive="bg-primary bg-opacity-10 text-primary fw-bold"
+             class="nav-link text-secondary d-flex align-items-center rounded-3 px-3 py-2">
+            <span class="material-icons me-3 fs-5">people</span> HR Directory
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a routerLink="/finance"
+             routerLinkActive="bg-primary bg-opacity-10 text-primary fw-bold"
+             class="nav-link text-secondary d-flex align-items-center rounded-3 px-3 py-2">
+            <span class="material-icons me-3 fs-5">account_balance</span> Financial Ledger
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a routerLink="/inventory"
+             routerLinkActive="bg-primary bg-opacity-10 text-primary fw-bold"
+             class="nav-link text-secondary d-flex align-items-center rounded-3 px-3 py-2">
+            <span class="material-icons me-3 fs-5">inventory_2</span> Smart Inventory
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a routerLink="/compliance"
+             routerLinkActive="bg-primary bg-opacity-10 text-primary fw-bold"
+             class="nav-link text-secondary d-flex align-items-center rounded-3 px-3 py-2">
+            <span class="material-icons me-3 fs-5">gavel</span> Compliance Vault
+          </a>
+        </li>
+
+      </ul>
+    </nav>
+
+    <div class="p-4 border-top">
+      <div class="d-flex align-items-center text-muted mb-3">
+        <span class="material-icons me-3 fs-4 text-success">account_circle</span>
+        <div>
+          <small class="d-block fw-bold text-dark">System Admin</small>
+          <small style="font-size: 0.75rem;">Identity Verified</small>
+        </div>
+      </div>
+
+      <button (click)="logout()" class="btn btn-outline-danger btn-sm w-100 d-flex align-items-center justify-content-center fw-medium">
+        <span class="material-icons me-2 fs-6">logout</span> Secure Logout
+      </button>
+    </div>
+
+  </aside>
+
+  <main class="flex-grow-1 overflow-auto" style="height: 100vh;">
+    <router-outlet></router-outlet>
+  </main>
+
+</div>
