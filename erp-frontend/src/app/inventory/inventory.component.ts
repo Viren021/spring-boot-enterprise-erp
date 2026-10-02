@@ -54,8 +54,11 @@ export class InventoryComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges(); // Force UI redraw
 
     } catch (error) {
-      // Fallback data if backend endpoint isn't ready yet, so your UI doesn't break
-      this.historicalSales = [100, 120, 110, 130, 150];
+      console.error('Unable to load inventory statistics.', error);
+      this.historicalSales = [];
+      this.totalItems = 0;
+      this.lowStockAlerts = 0;
+      this.recentRestocks = 0;
       this.cdr.detectChanges();
     }
   }
@@ -86,7 +89,13 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
   async triggerSaga() {
     try {
-      const response = await this.apiService.triggerOrderSaga();
+      const productId = Number(prompt('Product ID to reserve:'));
+      const quantity = Number(prompt('Quantity to reserve:'));
+      if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+        alert('Enter a valid positive product ID and quantity.');
+        return;
+      }
+      const response = await this.apiService.triggerOrderSaga(productId, quantity);
       alert(response);
     } catch (error) {
       console.error("Saga failed", error);

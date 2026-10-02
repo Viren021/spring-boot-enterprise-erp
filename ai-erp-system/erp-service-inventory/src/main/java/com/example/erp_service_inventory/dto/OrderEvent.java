@@ -3,6 +3,7 @@ package com.example.erp_service_inventory.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 
 @Data
 @AllArgsConstructor
@@ -13,4 +14,7 @@ public class OrderEvent {
     private Long productId;
     private Integer quantity;
     private String status;
+    private BigDecimal amount;
+    private BigDecimal unitPrice;
+    private String eventId;
 }

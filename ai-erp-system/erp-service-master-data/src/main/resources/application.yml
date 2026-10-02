@@ -1,0 +1,22 @@
+server:
+  port: 8089
+spring:
+  application:
+    name: erp-service-master-data
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/erp_db}
+    username: ${DB_USERNAME:erp_superadmin}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  # Keep migrations opt-in until this service has complete versioned coverage.
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true

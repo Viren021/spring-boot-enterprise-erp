@@ -1,0 +1,2 @@
+package com.example.erp_service_sales.config;
+public final class TenantContext { private TenantContext() {} private static final ThreadLocal<String> CURRENT=new ThreadLocal<>(); public static void set(String id){CURRENT.set(id);} public static String get(){return CURRENT.get();} public static String required(){String id=get(); if(id==null||id.isBlank()) throw new IllegalArgumentException("X-Tenant-ID header is required"); return id;} public static void clear(){CURRENT.remove();} }

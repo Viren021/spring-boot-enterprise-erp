@@ -1,0 +1,159 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: erp-api-gateway
+  cloud:
+    gateway:
+      routes:
+        # HR Service Route
+        - id: hr-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/hr/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: hr-service-breaker
+                fallbackUri: forward:/fallback
+
+        # Inventory Service Route
+        - id: inventory-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/inventory/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: inventory-service-breaker
+                fallbackUri: forward:/fallback
+
+        # Finance Service Route
+        - id: finance-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/v1/finance/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: finance-service-breaker
+                fallbackUri: forward:/fallback
+
+        # AI Service Route
+        - id: ai-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/v1/analytics/**,/api/v1/ai/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ai-service-breaker
+                fallbackUri: forward:/fallback
+
+        # Compliance Service Route
+        - id: compliance-service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/v1/compliance/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: compliance-service-breaker
+                fallbackUri: forward:/fallback
+
+        # Procurement Service Route
+        - id: procurement-service
+          uri: http://localhost:8087
+          predicates:
+            - Path=/api/v1/procurement/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: procurement-service-breaker
+                fallbackUri: forward:/fallback
+
+        # Sales and order-to-cash service
+        - id: sales-service
+          uri: http://localhost:8088
+          predicates:
+            - Path=/api/v1/sales/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: sales-service-breaker
+                fallbackUri: forward:/fallback
+
+        # Shared tenant-scoped master data
+        - id: master-data-service
+          uri: http://localhost:8089
+          predicates:
+            - Path=/api/v1/master-data/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: master-data-service-breaker
+                fallbackUri: forward:/fallback
+
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:4200"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/erp-realm
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+    instances:
+      hr-service-breaker:
+        baseConfig: default
+      finance-service-breaker:
+        baseConfig: default
+      inventory-service-breaker:
+        baseConfig: default
+      compliance-service-breaker:
+        baseConfig: default
+      ai-service-breaker:
+        baseConfig: default
+      procurement-service-breaker:
+        baseConfig: default
+      sales-service-breaker:
+        baseConfig: default
+      master-data-service-breaker:
+        baseConfig: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.example.erp_api_gateway: DEBUG

@@ -15,6 +15,14 @@ public class TenantContext {
         return CURRENT_TENANT.get();
     }
 
+    public static String requireTenantId() {
+        String tenantId = getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalStateException("X-Tenant-ID is required for finance operations");
+        }
+        return tenantId;
+    }
+
     public static void clear() {
         CURRENT_TENANT.remove();
     }

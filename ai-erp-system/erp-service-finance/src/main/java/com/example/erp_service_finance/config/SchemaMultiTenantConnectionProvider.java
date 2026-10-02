@@ -28,6 +28,9 @@ public class SchemaMultiTenantConnectionProvider implements MultiTenantConnectio
 
     @Override
     public Connection getConnection(String tenantIdentifier) throws SQLException {
+        if (tenantIdentifier == null || !tenantIdentifier.matches("[A-Za-z0-9_]+")) {
+            throw new SQLException("Invalid tenant schema identifier");
+        }
         Connection connection = getAnyConnection();
         try {
             // "tenant_tata_motors" -> SET search_path TO tenant_tata_motors

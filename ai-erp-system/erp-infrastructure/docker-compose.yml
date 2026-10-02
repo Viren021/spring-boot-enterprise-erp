@@ -135,6 +135,166 @@ services:
   #   networks:
   #     - erp-network
 
+  # ==========================================
+  # 🌐 API GATEWAY
+  # ==========================================
+  api-gateway:
+    build: ../erp-api-gateway
+    container_name: erp-api-gateway
+    ports:
+      - "8090:8090"
+    environment:
+      - KEYCLOAK_URL=http://keycloak:8080
+    depends_on:
+      - keycloak
+    networks:
+      - erp-network
+
+  # ==========================================
+  # 📦 PROCUREMENT SERVICE
+  # ==========================================
+  procurement-service:
+    build: ../erp-service-procurement
+    container_name: erp-procurement-service
+    ports:
+      - "8087:8087"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/erp_db
+      - DB_USERNAME=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KAFKA_URL=kafka:29092
+    depends_on:
+      - postgres
+      - kafka
+      - keycloak
+    networks:
+      - erp-network
+
+  sales-service:
+    build: ../erp-service-sales
+    container_name: erp-sales-service
+    ports:
+      - "8088:8088"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/erp_db
+      - DB_USERNAME=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - KAFKA_URL=kafka:29092
+    depends_on:
+      - postgres
+      - kafka
+    networks:
+      - erp-network
+
+  master-data-service:
+    build: ../erp-service-master-data
+    container_name: erp-master-data-service
+    ports:
+      - "8089:8089"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/erp_db
+      - DB_USERNAME=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
+    networks:
+      - erp-network
+
+  # ==========================================
+  # 📊 OBSERVABILITY STACK
+  # ==========================================
+
+  # Elasticsearch (for ELK log storage)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: erp-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - erp-network
+
+  # Logstash (log processing pipeline)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.0
+    container_name: erp-logstash
+    volumes:
+      - ./monitoring/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5000:5000"
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+    depends_on:
+      - elasticsearch
+    networks:
+      - erp-network
+
+  # Kibana (log visualization)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.0
+    container_name: erp-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - erp-network
+
+  # Jaeger (distributed tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: erp-jaeger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "14268:14268"   # Jaeger collector
+      - "6831:6831/udp" # Jaeger agent
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - erp-network
+
+  # Prometheus (metrics collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: erp-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - erp-network
+
+  # Grafana (dashboards & visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: erp-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - erp-network
+
 networks:
   erp-network:
     driver: bridge
@@ -142,3 +302,6 @@ networks:
 volumes:
   postgres_data:
   erp_mongo_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:

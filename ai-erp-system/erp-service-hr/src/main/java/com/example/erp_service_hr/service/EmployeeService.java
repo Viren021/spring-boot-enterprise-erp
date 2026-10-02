@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.LocalDate;
+import com.example.erp_service_hr.entity.EmployeeStatus;
 
 @Service
 public class EmployeeService {
@@ -34,5 +36,16 @@ public class EmployeeService {
 
     public List<Employee> getAllEmployees() {
         return employeeRepository.findAll();
+    }
+
+    @Transactional
+    public Employee updateLifecycle(Long id, EmployeeStatus status, LocalDate terminationDate) {
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + id));
+        if (status == EmployeeStatus.TERMINATED && terminationDate == null) terminationDate = LocalDate.now();
+        if (status != EmployeeStatus.TERMINATED) terminationDate = null;
+        employee.setStatus(status);
+        employee.setTerminationDate(terminationDate);
+        return employeeRepository.save(employee);
     }
 }

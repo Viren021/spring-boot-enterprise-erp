@@ -1,0 +1,3 @@
+package com.example.erp_service_sales.controller;
+import com.example.erp_service_sales.entity.*; import com.example.erp_service_sales.service.SalesService; import org.springframework.web.bind.annotation.*; import java.util.*;
+@RestController @RequestMapping("/api/v1/sales") public class BillingController { private final SalesService s; public BillingController(SalesService s){this.s=s;} @GetMapping("/invoices") public List<Invoice> invoices(){return s.invoices();} @PostMapping("/invoices") public Invoice invoice(@RequestBody Invoice i){return s.invoice(i);} @PostMapping("/payments") public Payment payment(@RequestBody Payment p){return s.payment(p);} }

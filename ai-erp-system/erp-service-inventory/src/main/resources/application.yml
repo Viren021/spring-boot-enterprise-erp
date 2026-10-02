@@ -22,6 +22,13 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+  # Keep migrations opt-in until this service has complete versioned coverage.
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+
   # 2. Redis Connection (Your new cache!)
   data:
     redis:

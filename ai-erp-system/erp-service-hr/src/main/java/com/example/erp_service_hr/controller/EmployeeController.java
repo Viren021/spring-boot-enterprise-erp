@@ -8,6 +8,8 @@ import org.springframework.security.access.prepost.PreAuthorize; // Import this!
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.time.LocalDate;
+import com.example.erp_service_hr.entity.EmployeeStatus;
 
 @RestController
 @RequestMapping("/api/v1/hr/employees")
@@ -28,6 +30,13 @@ public class EmployeeController {
     @GetMapping
     public ResponseEntity<List<Employee>> getEmployees() {
         return ResponseEntity.ok(employeeService.getAllEmployees());
+    }
+
+    public record LifecycleRequest(EmployeeStatus status, LocalDate terminationDate) {}
+    @PreAuthorize("hasAuthority('ROLE_HR_ADMIN')")
+    @PatchMapping("/{id}/lifecycle")
+    public ResponseEntity<Employee> updateLifecycle(@PathVariable Long id, @RequestBody LifecycleRequest request) {
+        return ResponseEntity.ok(employeeService.updateLifecycle(id, request.status(), request.terminationDate()));
     }
 
     // --- AI RISK DATA ---

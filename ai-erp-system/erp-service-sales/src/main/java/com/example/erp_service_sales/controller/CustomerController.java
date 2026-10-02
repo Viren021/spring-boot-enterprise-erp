@@ -1,0 +1,3 @@
+package com.example.erp_service_sales.controller;
+import com.example.erp_service_sales.entity.Customer; import com.example.erp_service_sales.service.SalesService; import org.springframework.web.bind.annotation.*; import java.util.*;
+@RestController @RequestMapping("/api/v1/sales/customers") public class CustomerController { private final SalesService service; public CustomerController(SalesService s){service=s;} @GetMapping public List<Customer> list(){return service.customers();} @PostMapping public Customer create(@RequestBody Customer c){return service.customer(c);} @PutMapping("/{id}") public Customer update(@PathVariable Long id,@RequestBody Customer c){return service.customer(id,c);} }

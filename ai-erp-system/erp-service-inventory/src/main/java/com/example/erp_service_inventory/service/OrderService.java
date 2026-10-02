@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 @Service
 public class OrderService {
@@ -30,7 +32,11 @@ public class OrderService {
                 savedOrder.getId(),
                 savedOrder.getProductId(),
                 savedOrder.getQuantity(),
-                savedOrder.getStatus()
+                savedOrder.getStatus(),
+                savedOrder.getUnitPrice() == null ? null :
+                        savedOrder.getUnitPrice().multiply(BigDecimal.valueOf(savedOrder.getQuantity())),
+                savedOrder.getUnitPrice(),
+                UUID.randomUUID().toString()
         );
 
         // 3. Publish to Kafka!
