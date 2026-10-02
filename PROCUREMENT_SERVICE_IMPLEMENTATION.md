@@ -1132,7 +1132,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/erp_db
     username: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:password}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -1346,5 +1346,4 @@ CREATE INDEX idx_invoice_vendor ON invoices(vendor_id);
 4. Build: `mvn clean install`
 5. Update docker-compose.yml with Procurement service
 6. Run: `docker-compose up`
-
 

@@ -407,7 +407,7 @@ Once everything is running:
    - Create log dashboards
    - Search logs by trace ID
 
-4. **Grafana** - `http://localhost:3000` (admin/admin)
+4. **Grafana** - `http://localhost:3000` (credentials configured with `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD`)
    - Create beautiful dashboards
    - Combine metrics from Prometheus
    - Set up alerts
@@ -507,5 +507,4 @@ If Prometheus can't scrape metrics:
 - Verify `/actuator/prometheus` endpoint is accessible
 - Check if `spring-boot-starter-actuator` is added to pom.xml
 - Ensure `management.endpoints.web.exposure.include` includes prometheus
-
 
