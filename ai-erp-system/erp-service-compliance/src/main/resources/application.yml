@@ -8,8 +8,8 @@ spring:
   # Connect to our new NoSQL Database (Secured with .env placeholders!)
   data:
     mongodb:
-      # Defaults are development-only placeholders; use environment variables locally and in deployment.
-      uri: mongodb://${MONGO_ROOT_USER:admin}:${MONGO_ROOT_PASSWORD:change-me}@${MONGO_HOST:localhost}:27017/erp_audit_db?authSource=admin
+      # Defaults to localhost/admin/secret for IDE, easily overridden by Docker
+      uri: mongodb://${MONGO_ROOT_USER:admin}:${MONGO_ROOT_PASSWORD:secret}@${MONGO_HOST:localhost}:27017/erp_audit_db?authSource=admin
 
   # Security connection to Keycloak
   security:
