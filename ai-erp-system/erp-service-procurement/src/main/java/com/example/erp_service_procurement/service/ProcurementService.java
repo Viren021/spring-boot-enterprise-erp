@@ -237,9 +237,14 @@ public class ProcurementService {
                 po.getLineItems().stream()
                         .filter(poLine -> Objects.equals(poLine.getId(), receivedLine.getPoLineItemId()))
                         .findFirst()
-                        .ifPresent(poLine -> poLine.setReceivedQuantity(
-                                (poLine.getReceivedQuantity() == null ? 0 : poLine.getReceivedQuantity())
-                                        + receivedLine.getReceivedQuantity()));
+                        .ifPresent(poLine -> {
+                            poLine.setReceivedQuantity(
+                                    (poLine.getReceivedQuantity() == null ? 0 : poLine.getReceivedQuantity())
+                                            + receivedLine.getReceivedQuantity());
+                            if (receivedLine.getUnitCost() == null || receivedLine.getUnitCost().signum() <= 0) {
+                                receivedLine.setUnitCost(poLine.getUnitPrice());
+                            }
+                        });
             }
         }
         receipt.setTenantId(tenantId);
@@ -256,9 +261,12 @@ public class ProcurementService {
         po.setUpdatedAt(LocalDateTime.now());
         poRepository.save(po);
 
-        if (po.getNetAmount() == null || po.getNetAmount().signum() <= 0)
-            throw new IllegalStateException("Cannot account for receipt: purchase order netAmount is unavailable");
-        producer.sendReceiptEvent("RECEIPT_CREATED", saved, po.getNetAmount());
+        BigDecimal receivedValue = saved.getLineItems().stream()
+                .map(line -> line.getUnitCost().multiply(BigDecimal.valueOf(line.getReceivedQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (receivedValue.signum() <= 0)
+            throw new IllegalStateException("Cannot account for receipt: actual receipt costs are unavailable");
+        producer.sendReceiptEvent("RECEIPT_CREATED", saved, receivedValue);
         producer.sendInventoryUpdate(po.getId(), saved.getId());
         audit("RECEIPT", saved.getId(), "CREATED", receipt.getReceivedBy(), tenantId,
                 "PO=" + poId + ", Status=" + saved.getStatus());

@@ -8,10 +8,15 @@ public final class InventoryRequests {
     public record LocationRequest(Long warehouseId, String code, String name) {}
     public record MovementRequest(Long productId, Long warehouseId, Long locationId,
                                   String movementType, BigDecimal quantity, String reference,
-                                  String idempotencyKey) {
+                                  String idempotencyKey, BigDecimal unitCost) {
         public MovementRequest(Long productId, Long warehouseId, Long locationId,
                                String movementType, BigDecimal quantity, String reference) {
-            this(productId, warehouseId, locationId, movementType, quantity, reference, null);
+            this(productId, warehouseId, locationId, movementType, quantity, reference, null, null);
+        }
+        public MovementRequest(Long productId, Long warehouseId, Long locationId,
+                               String movementType, BigDecimal quantity, String reference,
+                               String idempotencyKey) {
+            this(productId, warehouseId, locationId, movementType, quantity, reference, idempotencyKey, null);
         }
     }
     public record TransferRequest(Long productId, Long fromWarehouseId, Long fromLocationId,

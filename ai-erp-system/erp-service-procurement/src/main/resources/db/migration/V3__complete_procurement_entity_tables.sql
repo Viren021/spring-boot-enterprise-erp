@@ -22,3 +22,4 @@ CREATE TABLE IF NOT EXISTS procurement_audit_events (
     details VARCHAR(255),
     occurred_at TIMESTAMP NOT NULL
 );
+ALTER TABLE IF EXISTS receipt_line_items ADD COLUMN IF NOT EXISTS unit_cost NUMERIC(19,6);

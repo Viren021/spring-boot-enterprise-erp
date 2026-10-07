@@ -17,6 +17,7 @@ public class StockMovement {
     @Column(name = "location_id") private Long locationId;
     @Column(name = "movement_type", nullable = false) private String movementType;
     @Column(nullable = false, precision = 19, scale = 3) private BigDecimal quantity;
+    @Column(name = "unit_cost", precision = 19, scale = 6) private BigDecimal unitCost;
     private String reference;
     @Column(name = "idempotency_key", length = 200) private String idempotencyKey;
     @Column(nullable = false, length = 20) private String status = "POSTED";

@@ -73,9 +73,13 @@ public class InventoryService {
                 .orElseThrow(() -> new IllegalStateException("Product not found; inventory value is unavailable"));
         StockMovement m = new StockMovement(); m.setTenantId(t); m.setProductId(r.productId()); m.setWarehouseId(r.warehouseId());
         m.setLocationId(r.locationId()); m.setMovementType(r.movementType()); m.setQuantity(r.quantity()); m.setReference(r.reference());
+        BigDecimal unitCost = r.unitCost();
+        if (delta.signum() > 0 && (unitCost == null || unitCost.signum() <= 0))
+            throw new IllegalArgumentException("Inbound inventory requires the actual receipt unit cost");
+        m.setUnitCost(unitCost);
         m.setIdempotencyKey(r.idempotencyKey() == null || r.idempotencyKey().isBlank() ? null : r.idempotencyKey().trim());
         m.setCreatedBy(actor == null || actor.isBlank() ? "system" : actor);
-        BigDecimal amount = r.quantity().multiply(product.getPrice() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getPrice()));
+        BigDecimal amount = r.quantity().multiply(valuationCost(b, unitCost, delta));
         if ("ADJUSTMENT".equalsIgnoreCase(r.movementType())
                 && approvalPolicies.requiresApproval("STOCK_ADJUSTMENT", amount, actor)) {
             m.setStatus("PENDING_APPROVAL");
@@ -116,10 +120,18 @@ public class InventoryService {
 
     private void applyPostedMovement(StockBalance balance, StockMovement movement, Product product,
                                      BigDecimal delta, String tenant) {
-        finance.publish("INVENTORY_VALUATION", String.valueOf(movement.getId()), movement.getQuantity(), product,
+        finance.publish("INVENTORY_VALUATION", String.valueOf(movement.getId()), movement.getQuantity(),
+                movement.getUnitCost() == null ? balance.getAverageUnitCost() : movement.getUnitCost(),
                 delta.signum() < 0 ? "DECREASE" : "INCREASE");
-        costing.apply(balance, movement, product.getPrice() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getPrice()), delta);
+        costing.apply(balance, movement, movement.getUnitCost() == null ? balance.getAverageUnitCost() : movement.getUnitCost(), delta);
         balances.save(balance);
+    }
+
+    private BigDecimal valuationCost(StockBalance balance, BigDecimal inboundCost, BigDecimal delta) {
+        if (delta.signum() > 0) return inboundCost;
+        BigDecimal cost = balance.getAverageUnitCost();
+        if (cost == null || cost.signum() <= 0) throw new IllegalStateException("Outbound inventory has no weighted-average cost");
+        return cost;
     }
 
     private BigDecimal signedDelta(String movementType, BigDecimal quantity) {
@@ -146,7 +158,10 @@ public class InventoryService {
         StockReservation saved = reservations.save(x);
         Product product = products.findById(r.productId()).filter(p -> t.equals(p.getTenantId()))
                 .orElseThrow(() -> new IllegalStateException("Product not found; reservation value is unavailable"));
-        finance.publish("INVENTORY_RESERVATION", String.valueOf(saved.getId()), r.quantity(), product, "DECREASE");
+        BigDecimal reservationCost = b.getAverageUnitCost();
+        if (reservationCost == null || reservationCost.signum() <= 0)
+            throw new IllegalStateException("Cannot value reservation before inventory has a weighted-average cost");
+        finance.publish("INVENTORY_RESERVATION", String.valueOf(saved.getId()), r.quantity(), reservationCost, "DECREASE");
         return saved;
     }
     @Transactional

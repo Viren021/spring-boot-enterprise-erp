@@ -24,6 +24,9 @@ public class ReceiptLineItem {
     @Column(nullable = false)
     private Long receivedQuantity;
 
+    @Column(precision = 19, scale = 6)
+    private java.math.BigDecimal unitCost;
+
     private String serialNumber;
     private String batchNumber;
     private String qualityStatus; // OK, DEFECTIVE, PARTIAL
