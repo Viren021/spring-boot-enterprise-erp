@@ -17,4 +17,7 @@ public class StockBalance {
     @Column(name = "location_id") private Long locationId;
     @Column(nullable = false, precision = 19, scale = 3) private BigDecimal quantity = BigDecimal.ZERO;
     @Column(name = "reserved_quantity", nullable = false, precision = 19, scale = 3) private BigDecimal reservedQuantity = BigDecimal.ZERO;
+    @Column(name = "average_unit_cost", nullable = false, precision = 19, scale = 6) private BigDecimal averageUnitCost = BigDecimal.ZERO;
+    @Column(name = "inventory_value", nullable = false, precision = 19, scale = 2) private BigDecimal inventoryValue = BigDecimal.ZERO;
+    @Version private Long version;
 }

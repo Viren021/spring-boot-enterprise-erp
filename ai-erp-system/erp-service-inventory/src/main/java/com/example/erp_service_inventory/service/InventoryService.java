@@ -6,6 +6,7 @@ import com.example.erp_service_inventory.entity.*;
 import com.example.erp_service_inventory.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.erp_service_inventory.kafka.FinanceIntegrationProducer;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -17,12 +18,15 @@ public class InventoryService {
     private final StockMovementRepository movements;
     private final StockReservationRepository reservations;
     private final ProductRepository products;
+    private final FinanceIntegrationProducer finance;
+    private final InventoryCostingService costing;
 
     public InventoryService(WarehouseRepository warehouses, LocationRepository locations,
                             StockBalanceRepository balances, StockMovementRepository movements,
-                            StockReservationRepository reservations, ProductRepository products) {
+                            StockReservationRepository reservations, ProductRepository products, FinanceIntegrationProducer finance,
+                            InventoryCostingService costing) {
         this.warehouses = warehouses; this.locations = locations; this.balances = balances;
-        this.movements = movements; this.reservations = reservations; this.products = products;
+        this.movements = movements; this.reservations = reservations;                 this.products = products; this.finance = finance; this.costing = costing;
     }
 
     public String tenant() {
@@ -57,7 +61,14 @@ public class InventoryService {
         b.setQuantity(b.getQuantity().add(delta)); balances.save(b);
         StockMovement m = new StockMovement(); m.setTenantId(t); m.setProductId(r.productId()); m.setWarehouseId(r.warehouseId());
         m.setLocationId(r.locationId()); m.setMovementType(r.movementType()); m.setQuantity(r.quantity()); m.setReference(r.reference());
-        return movements.save(m);
+        StockMovement saved = movements.save(m);
+        Product product = products.findById(r.productId()).filter(p -> t.equals(p.getTenantId()))
+                .orElseThrow(() -> new IllegalStateException("Product not found; inventory value is unavailable"));
+        finance.publish("INVENTORY_VALUATION", String.valueOf(saved.getId()), r.quantity(), product,
+                delta.signum() < 0 ? "DECREASE" : "INCREASE");
+        costing.apply(b, saved, product.getPrice() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getPrice()), delta);
+        balances.save(b);
+        return saved;
     }
     @Transactional
     public void transfer(TransferRequest r) {
@@ -75,7 +86,11 @@ public class InventoryService {
         if (b.getQuantity().subtract(b.getReservedQuantity()).compareTo(r.quantity()) < 0) throw new IllegalStateException("Insufficient available stock");
         b.setReservedQuantity(b.getReservedQuantity().add(r.quantity())); balances.save(b);
         StockReservation x = new StockReservation(); x.setTenantId(t); x.setProductId(r.productId()); x.setWarehouseId(r.warehouseId()); x.setLocationId(r.locationId()); x.setQuantity(r.quantity()); x.setReference(r.reference());
-        return reservations.save(x);
+        StockReservation saved = reservations.save(x);
+        Product product = products.findById(r.productId()).filter(p -> t.equals(p.getTenantId()))
+                .orElseThrow(() -> new IllegalStateException("Product not found; reservation value is unavailable"));
+        finance.publish("INVENTORY_RESERVATION", String.valueOf(saved.getId()), r.quantity(), product, "DECREASE");
+        return saved;
     }
     @Transactional
     public StockReservation release(Long id) {

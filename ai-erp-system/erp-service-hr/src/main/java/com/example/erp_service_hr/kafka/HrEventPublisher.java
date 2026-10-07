@@ -6,6 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class HrEventPublisher {
@@ -44,4 +48,21 @@ public class HrEventPublisher {
             System.err.println("❌ Failed to publish HR event: " + e.getMessage());
         }
     }
+
+        public void publishPayrollApprovedEvent(com.example.erp_service_hr.entity.PayrollRun run) {
+            if (run.getNetAmount() == null || run.getNetAmount().signum() <= 0)
+                throw new IllegalStateException("Cannot publish PAYROLL_APPROVED without a positive netAmount");
+            String tenant = TenantContext.getTenantId();
+            if (tenant == null || tenant.isBlank()) throw new IllegalStateException("Tenant context is required");
+            String document = String.valueOf(run.getId());
+            String id = UUID.nameUUIDFromBytes((tenant + ":PAYROLL_APPROVED:" + document)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+            try {
+                kafkaTemplate.send("finance-integration-events", objectMapper.writeValueAsString(Map.of(
+                        "eventId", id, "tenantId", tenant, "eventType", "PAYROLL_APPROVED",
+                        "sourceDocumentId", document, "amount", run.getNetAmount(),
+                        "eventDate", LocalDate.now(), "description", "Payroll run " + document,
+                        "direction", "DEBIT")));
+            } catch (Exception e) { throw new IllegalStateException("Unable to publish payroll finance event", e); }
+        }
 }

@@ -153,7 +153,8 @@ public class FinanceService {
             debitCode = "CASH"; creditCode = "AR";
         } else if ("PAYROLL_APPROVED".equals(type)) {
             debitCode = "PAYROLL_EXPENSE"; creditCode = "PAYROLL_PAYABLE";
-        } else if ("INVENTORY_VALUATION".equals(type)) {
+        } else if ("INVENTORY_VALUATION".equals(type) || "INVENTORY_STOCK_MOVEMENT".equals(type)
+                || "INVENTORY_RESERVATION".equals(type)) {
             boolean decrease = "DECREASE".equalsIgnoreCase(event.direction());
             debitCode = decrease ? "COGS" : "INVENTORY";
             creditCode = decrease ? "INVENTORY" : "COGS";

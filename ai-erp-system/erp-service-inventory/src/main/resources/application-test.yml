@@ -1,0 +1,9 @@
+spring:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: update
+  kafka:
+    listener:
+      auto-startup: false

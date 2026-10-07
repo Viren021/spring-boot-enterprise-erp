@@ -10,13 +10,13 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:update}
     open-in-view: false
   # Keep migrations opt-in until this service has complete versioned coverage.
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: classpath:db/migration
-    validate-on-migrate: true
+    validate-on-migrate: ${FLYWAY_VALIDATE:false}
     clean-disabled: true
   kafka:
     bootstrap-servers: ${KAFKA_URL:localhost:9092}

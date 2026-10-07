@@ -248,7 +248,9 @@ public class ProcurementService {
         po.setUpdatedAt(LocalDateTime.now());
         poRepository.save(po);
 
-        producer.sendReceiptEvent("RECEIPT_CREATED", saved);
+        if (po.getNetAmount() == null || po.getNetAmount().signum() <= 0)
+            throw new IllegalStateException("Cannot account for receipt: purchase order netAmount is unavailable");
+        producer.sendReceiptEvent("RECEIPT_CREATED", saved, po.getNetAmount());
         producer.sendInventoryUpdate(po.getId(), saved.getId());
         audit("RECEIPT", saved.getId(), "CREATED", receipt.getReceivedBy(), tenantId,
                 "PO=" + poId + ", Status=" + saved.getStatus());
@@ -276,6 +278,7 @@ public class ProcurementService {
         }
         Invoice saved = invoiceRepository.save(invoice);
         audit("INVOICE", saved.getId(), "RECEIVED", "accounts-payable", tenantId, "Status=RECEIVED");
+        producer.sendFinanceInvoiceEvent(saved);
         return saved;
     }
 
