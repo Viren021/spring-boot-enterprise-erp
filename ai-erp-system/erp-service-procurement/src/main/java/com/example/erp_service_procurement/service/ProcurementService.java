@@ -26,6 +26,7 @@ public class ProcurementService {
     private final VendorRepository vendorRepository;
     private final ProcurementAuditEventRepository auditRepository;
     private final ProcurementProducer producer;
+    private final ApprovalPolicyService approvalPolicies;
 
     public ProcurementService(PurchaseRequestRepository prRepository,
                               PurchaseOrderRepository poRepository,
@@ -33,7 +34,8 @@ public class ProcurementService {
                               InvoiceRepository invoiceRepository,
                               VendorRepository vendorRepository,
                               ProcurementProducer producer,
-                              ProcurementAuditEventRepository auditRepository) {
+                              ProcurementAuditEventRepository auditRepository,
+                              ApprovalPolicyService approvalPolicies) {
         this.prRepository = prRepository;
         this.poRepository = poRepository;
         this.receiptRepository = receiptRepository;
@@ -41,6 +43,7 @@ public class ProcurementService {
         this.vendorRepository = vendorRepository;
         this.producer = producer;
         this.auditRepository = auditRepository;
+        this.approvalPolicies = approvalPolicies;
     }
 
     // === Purchase Requests ===
@@ -120,6 +123,11 @@ public class ProcurementService {
         if (actor != null && !"system".equalsIgnoreCase(actor)
                 && actor.equalsIgnoreCase(pr.getCreatedBy())) {
             throw new IllegalStateException("The requester cannot approve their own purchase request");
+        }
+        if (approvalPolicies != null && approvalPolicies.requiresApproval(
+                tenantId, "PURCHASE_REQUEST", BigDecimal.ZERO, pr.getDepartmentId(), pr.getCreatedBy())
+                && actor != null && actor.equalsIgnoreCase(pr.getCreatedBy())) {
+            throw new IllegalStateException("Maker-checker policy prevents self approval");
         }
         pr.setStatus("APPROVED");
         pr.setApproverComments(comments);
@@ -300,6 +308,12 @@ public class ProcurementService {
         if (actor != null && !"system".equalsIgnoreCase(actor)
                 && actor.equalsIgnoreCase(request.getCreatedBy())) {
             throw new IllegalStateException("The requester cannot approve the purchase order");
+        }
+        if (approvalPolicies != null && approvalPolicies.requiresApproval(
+                tenantId, "PURCHASE_ORDER", po.getNetAmount() == null ? BigDecimal.ZERO : po.getNetAmount(),
+                request.getDepartmentId(), request.getCreatedBy())
+                && actor != null && actor.equalsIgnoreCase(request.getCreatedBy())) {
+            throw new IllegalStateException("Maker-checker policy prevents self approval");
         }
         po.setStatus("APPROVED");
         po.setUpdatedAt(LocalDateTime.now());

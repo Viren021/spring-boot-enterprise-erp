@@ -7,10 +7,17 @@ public final class InventoryRequests {
     public record WarehouseRequest(String code, String name, String address) {}
     public record LocationRequest(Long warehouseId, String code, String name) {}
     public record MovementRequest(Long productId, Long warehouseId, Long locationId,
-                                  String movementType, BigDecimal quantity, String reference) {}
+                                  String movementType, BigDecimal quantity, String reference,
+                                  String idempotencyKey) {
+        public MovementRequest(Long productId, Long warehouseId, Long locationId,
+                               String movementType, BigDecimal quantity, String reference) {
+            this(productId, warehouseId, locationId, movementType, quantity, reference, null);
+        }
+    }
     public record TransferRequest(Long productId, Long fromWarehouseId, Long fromLocationId,
                                   Long toWarehouseId, Long toLocationId, BigDecimal quantity, String reference) {}
     public record ReservationRequest(Long productId, Long warehouseId, Long locationId,
                                      BigDecimal quantity, String reference) {}
     public record ProductPolicyRequest(Integer reorderLevel, Integer reorderQuantity) {}
+    public record ReconciliationRequest(Long productId, Long warehouseId, Long locationId, String notes) {}
 }

@@ -20,13 +20,15 @@ public class InventoryService {
     private final ProductRepository products;
     private final FinanceIntegrationProducer finance;
     private final InventoryCostingService costing;
+    private final InventoryApprovalPolicyService approvalPolicies;
 
     public InventoryService(WarehouseRepository warehouses, LocationRepository locations,
                             StockBalanceRepository balances, StockMovementRepository movements,
                             StockReservationRepository reservations, ProductRepository products, FinanceIntegrationProducer finance,
-                            InventoryCostingService costing) {
+                            InventoryCostingService costing, InventoryApprovalPolicyService approvalPolicies) {
         this.warehouses = warehouses; this.locations = locations; this.balances = balances;
-        this.movements = movements; this.reservations = reservations;                 this.products = products; this.finance = finance; this.costing = costing;
+        this.movements = movements; this.reservations = reservations; this.products = products;
+        this.finance = finance; this.costing = costing; this.approvalPolicies = approvalPolicies;
     }
 
     public String tenant() {
@@ -50,25 +52,80 @@ public class InventoryService {
 
     @Transactional
     public StockMovement move(MovementRequest r) {
+        return move(r, "system");
+    }
+
+    @Transactional
+    public StockMovement move(MovementRequest r, String actor) {
         if (r.quantity() == null || r.quantity().signum() <= 0) throw new IllegalArgumentException("Quantity must be positive");
         String t = tenant();
+        if (r.idempotencyKey() != null && !r.idempotencyKey().isBlank()) {
+            java.util.Optional<StockMovement> existing = movements.findByTenantIdAndIdempotencyKey(
+                    t, r.idempotencyKey().trim());
+            if (existing.isPresent()) return existing.get();
+        }
         StockBalance b = balances.findByTenantIdAndProductIdAndWarehouseIdAndLocationId(t, r.productId(), r.warehouseId(), r.locationId())
                 .orElseGet(() -> { StockBalance x = new StockBalance(); x.setTenantId(t); x.setProductId(r.productId()); x.setWarehouseId(r.warehouseId()); x.setLocationId(r.locationId()); return x; });
         BigDecimal delta = r.movementType().equalsIgnoreCase("ADJUSTMENT")
                 ? r.quantity() : (r.movementType().equalsIgnoreCase("OUT") || r.movementType().toUpperCase().endsWith("_OUT")
                 || r.movementType().equalsIgnoreCase("ISSUE") ? r.quantity().negate() : r.quantity());
-        if (b.getQuantity().add(delta).compareTo(BigDecimal.ZERO) < 0) throw new IllegalStateException("Insufficient stock");
-        b.setQuantity(b.getQuantity().add(delta)); balances.save(b);
-        StockMovement m = new StockMovement(); m.setTenantId(t); m.setProductId(r.productId()); m.setWarehouseId(r.warehouseId());
-        m.setLocationId(r.locationId()); m.setMovementType(r.movementType()); m.setQuantity(r.quantity()); m.setReference(r.reference());
-        StockMovement saved = movements.save(m);
         Product product = products.findById(r.productId()).filter(p -> t.equals(p.getTenantId()))
                 .orElseThrow(() -> new IllegalStateException("Product not found; inventory value is unavailable"));
-        finance.publish("INVENTORY_VALUATION", String.valueOf(saved.getId()), r.quantity(), product,
-                delta.signum() < 0 ? "DECREASE" : "INCREASE");
-        costing.apply(b, saved, product.getPrice() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getPrice()), delta);
-        balances.save(b);
+        StockMovement m = new StockMovement(); m.setTenantId(t); m.setProductId(r.productId()); m.setWarehouseId(r.warehouseId());
+        m.setLocationId(r.locationId()); m.setMovementType(r.movementType()); m.setQuantity(r.quantity()); m.setReference(r.reference());
+        m.setIdempotencyKey(r.idempotencyKey() == null || r.idempotencyKey().isBlank() ? null : r.idempotencyKey().trim());
+        m.setCreatedBy(actor == null || actor.isBlank() ? "system" : actor);
+        BigDecimal amount = r.quantity().multiply(product.getPrice() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getPrice()));
+        if ("ADJUSTMENT".equalsIgnoreCase(r.movementType())
+                && approvalPolicies.requiresApproval("STOCK_ADJUSTMENT", amount, actor)) {
+            m.setStatus("PENDING_APPROVAL");
+            return movements.save(m);
+        }
+        if (b.getQuantity().add(delta).compareTo(BigDecimal.ZERO) < 0) throw new IllegalStateException("Insufficient stock");
+        b.setQuantity(b.getQuantity().add(delta)); balances.save(b);
+        StockMovement saved = movements.save(m);
+        applyPostedMovement(b, saved, product, delta, t);
         return saved;
+    }
+
+    @Transactional
+    public StockMovement approveMovement(Long id, String actor) {
+        String t = tenant();
+        StockMovement movement = movements.findByIdAndTenantId(id, t)
+                .orElseThrow(() -> new IllegalArgumentException("Movement not found"));
+        if (!"PENDING_APPROVAL".equals(movement.getStatus()))
+            throw new IllegalStateException("Movement is not pending approval");
+        if (actor == null || actor.isBlank() || actor.equalsIgnoreCase(movement.getCreatedBy()))
+            throw new IllegalStateException("Maker-checker policy prevents self approval");
+        StockBalance balance = balances.findByTenantIdAndProductIdAndWarehouseIdAndLocationId(
+                t, movement.getProductId(), movement.getWarehouseId(), movement.getLocationId())
+                .orElseGet(() -> { StockBalance x = new StockBalance(); x.setTenantId(t);
+                    x.setProductId(movement.getProductId()); x.setWarehouseId(movement.getWarehouseId());
+                    x.setLocationId(movement.getLocationId()); return x; });
+        BigDecimal delta = signedDelta(movement.getMovementType(), movement.getQuantity());
+        if (balance.getQuantity().add(delta).compareTo(BigDecimal.ZERO) < 0)
+            throw new IllegalStateException("Insufficient stock");
+        balance.setQuantity(balance.getQuantity().add(delta));
+        Product product = products.findById(movement.getProductId()).filter(p -> t.equals(p.getTenantId()))
+                .orElseThrow(() -> new IllegalStateException("Product not found; inventory value is unavailable"));
+        movement.setStatus("POSTED"); movement.setApprovedBy(actor);
+        StockMovement saved = movements.save(movement);
+        applyPostedMovement(balance, saved, product, delta, t);
+        return saved;
+    }
+
+    private void applyPostedMovement(StockBalance balance, StockMovement movement, Product product,
+                                     BigDecimal delta, String tenant) {
+        finance.publish("INVENTORY_VALUATION", String.valueOf(movement.getId()), movement.getQuantity(), product,
+                delta.signum() < 0 ? "DECREASE" : "INCREASE");
+        costing.apply(balance, movement, product.getPrice() == null ? BigDecimal.ZERO : BigDecimal.valueOf(product.getPrice()), delta);
+        balances.save(balance);
+    }
+
+    private BigDecimal signedDelta(String movementType, BigDecimal quantity) {
+        String type = movementType == null ? "" : movementType.toUpperCase();
+        return "ADJUSTMENT".equals(type) || (!type.equals("OUT") && !type.endsWith("_OUT") && !type.equals("ISSUE"))
+                ? quantity : quantity.negate();
     }
     @Transactional
     public void transfer(TransferRequest r) {

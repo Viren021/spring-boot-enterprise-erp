@@ -24,6 +24,8 @@ public class JournalEntry {
     @Column(nullable = false) private LocalDate entryDate;
     @Column(length = 500) private String description;
     @Column(name = "source_event_id", length = 200) private String sourceEventId;
+    @Column(name = "created_by", length = 200) private String createdBy;
+    @Column(name = "approved_by", length = 200) private String approvedBy;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private PostingStatus status = PostingStatus.DRAFT;
     @OneToMany(mappedBy = "journalEntry", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JournalLine> lines = new ArrayList<>();

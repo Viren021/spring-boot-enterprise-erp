@@ -18,7 +18,7 @@ public class HrWorkflowService {
   if(value.getEmployeeId()==null || value.getStartDate()==null || value.getEndDate()==null || value.getEndDate().isBefore(value.getStartDate())) throw new IllegalArgumentException("Invalid leave request");
   return leaves.save(value);
  }
- @Transactional public LeaveRequest decideLeave(Long id, boolean approve, String actor, String reason) { LeaveRequest x=leaves.findById(id).orElseThrow(); ensurePending(x.getStatus()); x.setStatus(approve?ApprovalStatus.APPROVED:ApprovalStatus.REJECTED); x.setApprovedBy(actor); x.setRejectionReason(approve?null:reason); return leaves.save(x); }
+ @Transactional public LeaveRequest decideLeave(Long id, boolean approve, String actor, String reason) { LeaveRequest x=leaves.findById(id).orElseThrow(); ensurePending(x.getStatus()); ensureDifferentMaker(x.getEmployeeId(), actor); x.setStatus(approve?ApprovalStatus.APPROVED:ApprovalStatus.REJECTED); x.setApprovedBy(actor); x.setRejectionReason(approve?null:reason); return leaves.save(x); }
  public List<AttendanceRecord> attendance(Long employeeId) { return employeeId==null?attendance.findAll():attendance.findByEmployeeId(employeeId); }
  @Transactional public AttendanceRecord recordAttendance(AttendanceRecord x) { if(x.getEmployeeId()==null||x.getWorkDate()==null) throw new IllegalArgumentException("Employee and work date are required"); if(x.getCheckIn()!=null&&x.getCheckOut()!=null&&x.getCheckOut().isBefore(x.getCheckIn())) throw new IllegalArgumentException("Check-out precedes check-in"); return attendance.save(x); }
  @Transactional public PayrollPeriod period(PayrollPeriod x) { if(x.getStartDate()==null||x.getEndDate()==null||x.getEndDate().isBefore(x.getStartDate())) throw new IllegalArgumentException("Invalid payroll period"); return periods.save(x); }
@@ -28,6 +28,11 @@ public class HrWorkflowService {
  @Transactional public PayrollRun processRun(Long id){PayrollRun x=runs.findById(id).orElseThrow(); ensurePending(x.getStatus()); x.setStatus(ApprovalStatus.APPROVED); x.setProcessedAt(LocalDateTime.now()); PayrollRun saved=runs.save(x); publisher.publishPayrollApprovedEvent(saved); return saved;}
  @Transactional public ExpenseClaim expense(ExpenseClaim x){if(x.getEmployeeId()==null||x.getAmount()==null||x.getAmount().signum()<0)throw new IllegalArgumentException("Invalid expense claim");return expenses.save(x);}
  public List<ExpenseClaim> expenses(Long employeeId){return employeeId==null?expenses.findAll():expenses.findByEmployeeId(employeeId);}
- @Transactional public ExpenseClaim decideExpense(Long id,boolean approve,String actor,String reason){ExpenseClaim x=expenses.findById(id).orElseThrow();ensurePending(x.getStatus());x.setStatus(approve?ApprovalStatus.APPROVED:ApprovalStatus.REJECTED);x.setApprovedBy(actor);x.setRejectionReason(approve?null:reason);return expenses.save(x);}
+ @Transactional public ExpenseClaim decideExpense(Long id,boolean approve,String actor,String reason){ExpenseClaim x=expenses.findById(id).orElseThrow();ensurePending(x.getStatus());ensureDifferentMaker(x.getEmployeeId(), actor);x.setStatus(approve?ApprovalStatus.APPROVED:ApprovalStatus.REJECTED);x.setApprovedBy(actor);x.setRejectionReason(approve?null:reason);return expenses.save(x);}
  private void ensurePending(ApprovalStatus s){if(s!=ApprovalStatus.PENDING)throw new IllegalStateException("Record has already been decided");}
+ private void ensureDifferentMaker(Long employeeId, String actor) {
+  if (employeeId != null && actor != null && !"system".equalsIgnoreCase(actor)
+      && actor.equalsIgnoreCase(String.valueOf(employeeId)))
+   throw new IllegalStateException("Maker-checker policy prevents self approval");
+ }
 }

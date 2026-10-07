@@ -13,8 +13,8 @@ public class ApprovalPolicyController {
     private final ApprovalPolicyService service;
     public ApprovalPolicyController(ApprovalPolicyService service) { this.service = service; }
     @PostMapping public ApprovalPolicy create(@RequestBody ApprovalPolicy p) { return service.save(p); }
-    @GetMapping public List<ApprovalPolicy> list(@RequestParam String tenantId, @RequestParam String documentType) {
-        return service.list(tenantId, documentType);
+    @GetMapping public List<ApprovalPolicy> list(@RequestParam String documentType) {
+        return service.list(TenantContext.getTenantId(), documentType);
     }
     @GetMapping("/matching")
     public List<ApprovalPolicy> matching(@RequestParam String documentType,

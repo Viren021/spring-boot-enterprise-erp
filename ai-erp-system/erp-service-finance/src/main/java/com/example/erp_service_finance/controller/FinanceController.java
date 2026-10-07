@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/v1/finance")
@@ -21,6 +22,10 @@ public class FinanceController {
     public FiscalPeriod createPeriod(@RequestBody FiscalPeriodRequest request) { return service.createPeriod(request); }
     @GetMapping("/journals") public List<JournalEntry> journals() { return service.journals(); }
     @PostMapping("/journals") @ResponseStatus(HttpStatus.CREATED)
-    public JournalEntry createJournal(@RequestBody JournalEntryRequest request) { return service.createJournal(request); }
-    @PostMapping("/journals/{id}/post") public JournalEntry post(@PathVariable UUID id) { return service.postJournal(id); }
+    public JournalEntry createJournal(@RequestBody JournalEntryRequest request, Principal principal) {
+        return service.createJournal(request, principal == null ? "system" : principal.getName());
+    }
+    @PostMapping("/journals/{id}/post") public JournalEntry post(@PathVariable UUID id, Principal principal) {
+        return service.postJournal(id, principal == null ? "system" : principal.getName());
+    }
 }

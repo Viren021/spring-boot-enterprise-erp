@@ -53,6 +53,11 @@ public class FinanceService {
 
     @Transactional
     public JournalEntry createJournal(JournalEntryRequest request) {
+        return createJournal(request, "system");
+    }
+
+    @Transactional
+    public JournalEntry createJournal(JournalEntryRequest request, String actor) {
         String tenant = TenantContext.requireTenantId();
         requireText(request.entryNumber(), "Entry number");
         if (request.entryDate() == null || request.lines() == null || request.lines().size() < 2)
@@ -65,6 +70,7 @@ public class FinanceService {
         JournalEntry entry = new JournalEntry();
         entry.setTenantId(tenant); entry.setEntryNumber(request.entryNumber().trim());
         entry.setEntryDate(request.entryDate()); entry.setDescription(request.description());
+        entry.setCreatedBy(actor == null || actor.isBlank() ? "system" : actor);
         for (JournalLineRequest lineRequest : request.lines()) {
             if (lineRequest == null || lineRequest.accountId() == null)
                 throw new IllegalArgumentException("Every journal line requires an account");
@@ -178,13 +184,23 @@ public class FinanceService {
 
     @Transactional
     public JournalEntry postJournal(UUID id) {
+        return postJournal(id, "system");
+    }
+
+    @Transactional
+    public JournalEntry postJournal(UUID id, String actor) {
         String tenant = TenantContext.requireTenantId();
         JournalEntry entry = journals.findByIdAndTenantId(id, tenant)
                 .orElseThrow(() -> new IllegalArgumentException("Journal entry not found"));
         if (entry.getStatus() == PostingStatus.POSTED) throw new IllegalStateException("Journal entry is already posted");
+        String approver = actor == null || actor.isBlank() ? "system" : actor;
+        if (!"system".equalsIgnoreCase(approver) && approver.equalsIgnoreCase(entry.getCreatedBy())) {
+            throw new IllegalStateException("Maker-checker policy prevents the journal creator from posting it");
+        }
         validateBalanced(entry.getLines().stream().map(l -> new JournalLineRequest(
                 l.getAccount().getId(), l.getDebit(), l.getCredit(), l.getDescription())).toList());
         entry.setStatus(PostingStatus.POSTED);
+        entry.setApprovedBy(approver);
         return entry;
     }
 

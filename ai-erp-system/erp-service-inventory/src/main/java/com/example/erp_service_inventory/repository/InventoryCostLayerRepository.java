@@ -7,6 +7,11 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface InventoryCostLayerRepository extends JpaRepository<InventoryCostLayer, Long> {
+    @Query("select l from InventoryCostLayer l where l.tenantId = :tenant and l.productId = :product " +
+            "and l.warehouseId = :warehouse and (l.locationId = :location or " +
+            "(:location is null and l.locationId is null)) and l.quantityRemaining > :remaining order by l.createdAt")
     List<InventoryCostLayer> findByTenantIdAndProductIdAndWarehouseIdAndLocationIdAndQuantityRemainingGreaterThanOrderByCreatedAt(
-            String tenantId, Long productId, Long warehouseId, Long locationId, BigDecimal remaining);
+            @Param("tenant") String tenantId, @Param("product") Long productId,
+            @Param("warehouse") Long warehouseId, @Param("location") Long locationId,
+            @Param("remaining") BigDecimal remaining);
 }
